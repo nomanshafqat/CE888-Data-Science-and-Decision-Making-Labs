@@ -18,9 +18,9 @@ def UCTPlayGame():
         # print(state.playerJustMoved)
 
         if state.playerJustMoved == 1:
-            m = UCT(rootstate=state, itermax=10, verbose=False)  # play with values for itermax and verbose = True
+            m = UCT(rootstate=state, itermax=1000, verbose=False)  # play with values for itermax and verbose = True
         else:
-            m = UCT(rootstate=state, itermax=20, verbose=False)
+            m = UCT(rootstate=state, itermax=1000, verbose=False)
 
         import csv
         writer = csv.writer(open(str(state.size)+"_"+ state.__class__.__name__ + ".csv", 'a',newline='\n'))
@@ -66,7 +66,7 @@ def UCTPlayGame():
 if __name__ == "__main__":
     """ Play a single game to the end using UCT for both players. 
     """
-    num_of_games=100
+    num_of_games=1000
     wins=[]
     for i in range(num_of_games):
 
