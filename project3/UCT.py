@@ -17,12 +17,47 @@
 
 from math import *
 import random
+from config import config
+import numpy as np
+
+def get_state(state):
+    game_str = []
+    # print(state.size, state.playerJustMoved)
+    # game_str += str(state.size) + "," + str(state.playerJustMoved)
+
+    game_str.append(str(state.playerJustMoved))
+
+    if state.playerJustMoved == 1:
+        me = 2
+        nw = np.array(state.board)
+        my_discs = len(nw[nw == 2])
+        his_disks = len(nw[nw == 1])
+
+    else:
+        me = 1
+        nw = np.array(state.board)
+        my_discs = len(nw[nw == 1])
+        his_disks = len(nw[nw == 2])
+
+    game_str.append(me)
+    game_str.append(my_discs)
+    game_str.append(his_disks)
+
+
+    for i in range(state.size):
+        for j in range(state.size):
+            # print(state.board[i][j], end=" ")
+            # game_str+=","+str(state.board[i][j] )
+
+            game_str.append(str(state.board[i][j]))
+        # print("", end="\n")
+    return game_str
 
 
 class GameState:
     """ A state of the game, i.e. the game board. These are the only functions which are
-        absolutely necessary to implement UCT in any 2-player complete information deterministic 
-        zero-sum game, although they can be enhanced and made quicker, for example by using a 
+        absolutely necessary to implement UCT in any 2-player complete information deterministic
+        zero-sum game, although they can be enhanced and made quicker, for example by using a
         GetRandomMove() function to generate a random move during rollout.
         By convention the players are numbered 1 and 2.
     """
@@ -48,7 +83,7 @@ class GameState:
         """
 
     def GetResult(self, playerjm):
-        """ Get the game result from the viewpoint of playerjm. 
+        """ Get the game result from the viewpoint of playerjm.
         """
 
     def __repr__(self):
@@ -58,8 +93,8 @@ class GameState:
 
 
 class NimState:
-    """ A state of the game Nim. In Nim, players alternately take 1,2 or 3 chips with the 
-        winner being the player to take the last chip. 
+    """ A state of the game Nim. In Nim, players alternately take 1,2 or 3 chips with the
+        winner being the player to take the last chip.
         In Nim any initial state of the form 4n+k for k = 1,2,3 is a win for player 1
         (by choosing k) chips.
         Any initial state of the form 4n is a win for player 2.
@@ -90,7 +125,7 @@ class NimState:
         return list(range(1, min([4, self.chips + 1])))
 
     def GetResult(self, playerjm):
-        """ Get the game result from the viewpoint of playerjm. 
+        """ Get the game result from the viewpoint of playerjm.
         """
         assert self.chips == 0
         if self.playerJustMoved == playerjm:
@@ -138,7 +173,7 @@ class OXOState:
         return [i for i in range(9) if self.board[i] == 0]
 
     def GetResult(self, playerjm):
-        """ Get the game result from the viewpoint of playerjm. 
+        """ Get the game result from the viewpoint of playerjm.
         """
         for (x, y, z) in [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6)]:
             if self.board[x] == self.board[y] == self.board[z]:
@@ -161,11 +196,11 @@ class OthelloState:
     """ A state of the game of Othello, i.e. the game board.
         The board is a 2D array where 0 = empty (.), 1 = player 1 (X), 2 = player 2 (O).
         In Othello players alternately place pieces on a square board - each piece played
-        has to sandwich opponent pieces between the piece played and pieces already on the 
+        has to sandwich opponent pieces between the piece played and pieces already on the
         board. Sandwiched pieces are flipped.
         This implementation modifies the rules to allow variable sized square boards and
         terminates the game as soon as the player about to move cannot make a move (whereas
-        the standard game allows for a pass move). 
+        the standard game allows for a pass move).
     """
 
     def __init__(self, sz=8):
@@ -258,7 +293,7 @@ class OthelloState:
         return x >= 0 and x < self.size and y >= 0 and y < self.size
 
     def GetResult(self, playerjm):
-        """ Get the game result from the viewpoint of playerjm. 
+        """ Get the game result from the viewpoint of playerjm.
         """
         jmcount = len([(x, y) for x in range(self.size) for y in range(self.size) if self.board[x][y] == playerjm])
         notjmcount = len([(x, y) for x in range(self.size) for y in range(4) if self.board[x][y] == 3 - playerjm])
@@ -281,6 +316,8 @@ class OthelloState:
         print(self.board)
 
 
+legal = 1
+illegal = 1
 class Node:
     """ A node in the game tree. Note wins is always from the viewpoint of playerJustMoved.
         Crashes if state not specified.
@@ -341,10 +378,14 @@ class Node:
         return s
 
 
-def UCT(rootstate, itermax, verbose=False):
+
+
+
+def UCT(rootstate, itermax, verbose=False, classifier=None):
     """ Conduct a UCT search for itermax iterations starting from rootstate.
         Return the best move from the rootstate.
         Assumes 2 alternating players (player 1 starts), with game results in the range [0.0, 1.0]."""
+
 
     rootnode = Node(state=rootstate)
 
@@ -363,11 +404,44 @@ def UCT(rootstate, itermax, verbose=False):
             state.DoMove(m)
             node = node.AddChild(m, state)  # add child and descend tree
 
+
+
         # Rollout - this can often be made orders of magnitude quicker using a state.GetRandomMove() function
         while state.GetMoves() != []:  # while state is non-terminal
-            state.DoMove(random.choice(state.GetMoves()))
+            if classifier:
+                random_int = random.randint(1, 10) / 10
+                if random_int > 0.9:
+                    state_str = get_state(state)
+                    # probs = classifier.predict_proba([state_str])
+                    pred_move = classifier.predict([state_str])
 
-        # Backpropagate
+                    legal_move_predicted = False
+                    for move in state.GetMoves():
+                        # print(move)
+                        move_str = str(move[0]) + "_" + str(move[1])
+                        if move_str == pred_move:
+                            state.DoMove(random.choice(state.GetMoves()))
+                            config["legal"] += 1
+                            legal_move_predicted = True
+
+                    if not legal_move_predicted:
+                        config["illegal"]+=1
+                        state.DoMove(random.choice(state.GetMoves()))
+
+                else:
+                    state.DoMove(random.choice(state.GetMoves()))
+            else:
+
+                state.DoMove(random.choice(state.GetMoves()))
+                # state_str = get_state(state)
+                # print(len(state_str))
+
+        random_int = random.randint(1, 10000)
+        if random_int<10:
+            print(  config["legal"] / ( config["legal"]+config["illegal"]),  config["legal"] , config["illegal"], end=" ")
+
+
+    # Backpropagate
         while node != None:  # backpropagate from the expanded node and work back to the root node
             node.Update(state.GetResult(
                 node.playerJustMoved))  # state is terminal. Update node with result from POV of node.playerJustMoved
@@ -380,4 +454,3 @@ def UCT(rootstate, itermax, verbose=False):
     #     print(rootnode.ChildrenToString())
 
     return sorted(rootnode.childNodes, key=lambda c: c.visits)[-1].move  # return the move that was most visited
-

@@ -3,3 +3,4 @@
 project3/.idea/Project3.iml
 project3/.idea/modules.xml
 *.xml
+*.pyc
