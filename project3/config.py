@@ -6,7 +6,7 @@ config={}
 
 config["target_dir"]="Logs"
 # config["iteration"]=open("iteration_no.txt").readline()
-config["total_iterations"]=100
+config["total_iterations"]=21
 
 
 

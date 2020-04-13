@@ -20,10 +20,9 @@ def concat_all_datasets(csv_logs_path, i):
     # print(str(type(whole_data)))
     for j in range(max(0,i-100), i + 1):
         csvPath = os.path.join(csv_logs_path, "OthelloState_log" + str(j) + ".csv")
-        # print(j, csvPath)
+        print(j, csvPath)
 
-        print(csvPath)
-        dataset_ = pd.read_csv(csvPath, header=None)
+        dataset_ = pd.read_csv(csvPath, header=None,delimiter = ",")
 
         # print(dataset_.shape)
         if str(type(whole_data)) == "<class 'NoneType'>":
@@ -34,6 +33,7 @@ def concat_all_datasets(csv_logs_path, i):
             whole_data = whole_data.append(dataset_)
             # print(whole_data.shape, "cocat")
 
+        # break
     return whole_data
 
 
@@ -51,6 +51,7 @@ for i in range(0,config["total_iterations"]):
 
     csvPath = os.path.join(csv_logs_path, "OthelloState_log" + str(i) + ".csv")
     modelPath = os.path.join(model_logs_path, "OthelloState_model" + str(i) + ".pkl")
+
     modelPath_last = os.path.join(model_logs_path, "OthelloState_model" + str(i-1) + ".pkl")
 
     if not os.path.exists(csv_logs_path):
@@ -66,11 +67,12 @@ for i in range(0,config["total_iterations"]):
         classifier = joblib.load(modelPath_last)
 
 
-    num_of_games = 5
+    num_of_games = 1000
     wins = []
     for j in range(num_of_games):
         wins.append(UCTPlayGame(classifier=classifier,classifier2=classifier,writer=writer))
-        print(wins)
+        # print(wins)
+        print(j,"/", num_of_games, " win % = ", wins.count("expert") / len(wins), "loss % = ",wins.count("apprentice")/len(wins), " draw % = ",(len(wins)-wins.count("apprentice")-wins.count("expert")) /len(wins))
 
     dataset = concat_all_datasets(csv_logs_path, i)
     Y = dataset.iloc[:, -1]
@@ -78,13 +80,18 @@ for i in range(0,config["total_iterations"]):
     # print(X.shape,Y.shape)
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, Y, test_size=0.3, stratify=Y)
+        X, Y, test_size=0.2, stratify=Y)
     clf = tree.DecisionTreeClassifier()
-    # clf = MLPClassifier()
     clf = clf.fit(X_train, y_train)
+
+    clf2 = MLPClassifier()
+    clf2 = clf2.fit(X_train, y_train)
+
 
     joblib.dump(clf,modelPath)
     print(clf.score(X_test, y_test), len(Y))
+    print("clf2 ", clf2.score(X_test, y_test), len(Y))
+
 
     # print()
     # print(np.concatenate([np.expand_dims(clf.predict(X_test),axis=-1), np.expand_dims(np.array(y_test),axis=-1)],axis=-1))

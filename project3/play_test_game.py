@@ -1,17 +1,17 @@
-'''Created by nomanshafqat at 2020-02-18'''
-from UCT import OthelloState, UCT, get_state
-import os
-import numpy as np
+'''Created by nomanshafqat at 2020-04-07'''
 import time
 
-def UCTPlayGame(writer=None, classifier=None, classifier2=None):
+from UCT import OthelloState, UCT, get_state
+
+
+def UCTPlayGame(writer=None, classifier=None, expert_clf=None):
     """ Play a sample game between two UCT players where each player gets a different number
         of UCT iterations (= simulations = tree nodes).
     """
     state = OthelloState(6)  # uncomment to play Othello on a square board of the given size
 
     time_start=time.time()
-    expert=0
+    expert=-1
     import random
     rand=random.randint(1,10)/10
 
@@ -33,7 +33,7 @@ def UCTPlayGame(writer=None, classifier=None, classifier2=None):
         else:
             # print("\nexpert = ",expert)
             m = UCT(rootstate=state, itermax=30, verbose=False,
-                    classifier=classifier2)  # play with values for itermax and verbose = True
+                    classifier=expert_clf)  # play with values for itermax and verbose = True
 
         game_str = get_state(state)
         game_str.append(str(m[0]) + "_" + str(m[1]))
@@ -64,13 +64,3 @@ def UCTPlayGame(writer=None, classifier=None, classifier2=None):
     else:
         print("Nobody wins!")
         return 0
-
-
-if __name__ == "__main__":
-    """ Play a single game to the end using UCT for both players.
-    """
-    num_of_games = 1000
-    wins = []
-    for i in range(num_of_games):
-        wins.append(UCTPlayGame(classifier=None))
-        print(wins)

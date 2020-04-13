@@ -3,11 +3,11 @@ import csv
 import os
 import joblib
 from config import config
-from play_game import UCTPlayGame
+from play_test_game import UCTPlayGame
 
 target_dir = config["target_dir"]
 classifier = None
-
+import numpy as np
 csv_logs_path = os.path.join(target_dir, "game_logs")
 model_logs_path = os.path.join(target_dir, "models")
 results_logs_path = os.path.join(target_dir, "results")
@@ -20,10 +20,10 @@ if not os.path.exists(model_logs_path):
 if not os.path.exists(results_logs_path):
     os.mkdir(results_logs_path)
 
+win_rate=np.zeros((16,16))
 
-
-for i in range(1,15,2):
-    for j in reversed(range(0,i,2)):
+for i in range(0,10,8):
+    for j in range(0,i,1):
 
         print("iteration = ", i, j)
         config["legal"]=1
@@ -43,18 +43,22 @@ for i in range(1,15,2):
         if not os.path.exists(model_logs_path):
             os.mkdir(model_logs_path)
 
-
-        clf1=joblib.load(modelPath_first)
-        clf2=joblib.load(modelPath_second)
+        expert_clf=joblib.load(modelPath_first)
+        clf=joblib.load(modelPath_second)
 
 
         num_of_games = 10
         wins = []
-        for j in range(num_of_games):
-            wins.append(UCTPlayGame(classifier=clf1,classifier2=clf2,writer=None))
+        for k in range(num_of_games):
+            wins.append(UCTPlayGame(classifier=clf, expert_clf=expert_clf, writer=None))
             print(wins)
+            print("percentage = ",(wins.count("expert")+wins.count(0))/len(wins))
 
-        writer.writerow(wins)
+
+        writer.writerow(["percentage = ",(wins.count("expert")+wins.count(0))/len(wins)])
+        win_rate[i][j]=wins.count("expert")/len(wins)
+
+        np.save("1-30-5.npy", win_rate)
 
         # print()
         # print(np.concatenate([np.expand_dims(clf.predict(X_test),axis=-1), np.expand_dims(np.array(y_test),axis=-1)],axis=-1))
