@@ -6,7 +6,7 @@
 # 
 # Example GameState classes for Nim, OXO and Othello are included to give some idea of how you
 # can write your own GameState use UCT in your 2-player game. Change the game to be played in 
-# the UCTPlayGame() function at the bottom of the code.
+# the UCTPlayTestGame() function at the bottom of the code.
 # 
 # Written by Peter Cowling, Ed Powley, Daniel Whitehouse (University of York, UK) September 2012.
 # 
@@ -21,13 +21,10 @@ from config import config
 import numpy as np
 
 
+# function Which captures the state of the Game
 def get_state(state):
     board_copy = np.array(state.board).copy()
-
     game_str = []
-    # print(state.size, state.playerJustMoved)
-    # game_str += str(state.size) + "," + str(state.playerJustMoved)
-
     game_str.append(str(state.playerJustMoved))
 
     if state.playerJustMoved == 1:
@@ -44,30 +41,13 @@ def get_state(state):
 
     for i, j in state.GetMoves():
         board_copy[i][j] = 3
-        # print(state.board[i][j])
 
     game_str.append(me)
     game_str.append(my_discs)
     game_str.append(his_disks)
-    #
-    # for i in range(state.size):
-    #     for j in range(state.size):
-    #         print(state.board[i][j], end=" ")
-    #         # game_str+=","+str(state.board[i][j] )
-    #
-    #         game_str.append(str(board_copy[i][j]))
-    #     print("", end="\n")
-
-    # print("\n", end="\n")
-    #
     for i in range(state.size):
         for j in range(state.size):
-            # print(board_copy[i][j], end=" ")
-            # game_str+=","+str(state.board[i][j] )
-
             game_str.append(str(board_copy[i][j]))
-        # print("", end="\n")
-
     return game_str
 
 
@@ -121,6 +101,7 @@ class OthelloState:
     """
 
     def __init__(self, sz=8):
+        self.no_of_moves = 0
         self.playerJustMoved = 2  # At the root pretend the player just moved is p2 - p1 has the first move
         self.board = []  # 0 = empty, 1 = player 1, 2 = player 2
         self.size = sz
@@ -143,6 +124,7 @@ class OthelloState:
         """ Update a state by carrying out the given move.
             Must update playerToMove.
         """
+        self.no_of_moves += 1
         (x, y) = (move[0], move[1])
         assert x == int(x) and y == int(y) and self.IsOnBoard(x, y) and self.board[x][y] == 0
         m = self.GetAllSandwichedCounters(x, y)
@@ -307,9 +289,8 @@ def UCT(rootstate, itermax, verbose=False, classifier=None):
     rootnode = Node(state=rootstate)
     j = 0
     for i in range(itermax):
-    # while (time.time() - time_start) * 1000 < itermax:
+        # while (time.time() - time_start) * 1000 < itermax:
         j += 1
-        # print(time.time()-time_start)
         node = rootnode
         state = rootstate.Clone()
 
@@ -326,13 +307,14 @@ def UCT(rootstate, itermax, verbose=False, classifier=None):
 
         # Rollout - this can often be made orders of magnitude quicker using a state.GetRandomMove() function
         while state.GetMoves() != []:  # while state is non-terminal
-            if classifier:
+
+            if classifier:  # if classifier is defined  90% of the times predict and 10% random
                 random_int = random.randint(1, 10) / 10
                 if random_int > 0.9:
                     state_str = get_state(state)
-                    # probs = classifier.predict_proba([state_str])
-                    pred_move = classifier.predict([state_str])
+                    pred_move = classifier.predict([state_str])  # move predicted by classifier
 
+                    # if the move predicted is legal do it else random
                     legal_move_predicted = False
                     for move in state.GetMoves():
                         # print(move)
@@ -341,22 +323,22 @@ def UCT(rootstate, itermax, verbose=False, classifier=None):
                             state.DoMove(random.choice(state.GetMoves()))
                             config["legal"] += 1
                             legal_move_predicted = True
-
+                    # if illegal move is predicted
                     if not legal_move_predicted:
                         config["illegal"] += 1
                         state.DoMove(random.choice(state.GetMoves()))
 
-                else:
+                else:  # 10% random choice
                     state.DoMove(random.choice(state.GetMoves()))
             else:
 
                 state.DoMove(random.choice(state.GetMoves()))
-                # state_str = get_state(state)
-                # print(len(state_str))
 
+        # randomly prints oercentage of legal moves predicted
         random_int = random.randint(1, 10000)
         if random_int < 10:
-            print( "<",config["legal"] / (config["legal"] + config["illegal"]), config["legal"], config["illegal"],">", end=" ")
+            print("<", config["legal"] / (config["legal"] + config["illegal"]), config["legal"], config["illegal"], ">",
+                  end=" ")
 
         # Backpropagate
         while node != None:  # backpropagate from the expanded node and work back to the root node
@@ -367,7 +349,4 @@ def UCT(rootstate, itermax, verbose=False, classifier=None):
     # Output some information about the tree - can be omitted
     if (verbose):
         print(rootnode.TreeToString(0))
-    # else:
-    #     print(rootnode.ChildrenToString())
-    # print(j, end="")
     return sorted(rootnode.childNodes, key=lambda c: c.visits)[-1].move  # return the move that was most visited

@@ -7,3 +7,4 @@ project3/.idea/modules.xml
 *.csv
 *.pkl
 *.npy
+*.png
